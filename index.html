@@ -41,6 +41,9 @@
   .pill{flex:1;background:rgba(255,255,255,.17);border-radius:16px;padding:12px 14px}
   .pill span{display:block;font-size:12px;opacity:.85;font-weight:600}
   .pill b{font-size:18px}
+  .pill.g{background:#10b981}
+  .pill.r{background:#f43f5e}
+  .editbtn{background:rgba(255,255,255,.18);border:0;color:#fff;padding:8px 13px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;margin:-4px 0 14px;font-family:inherit}
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
   .stat{background:var(--card);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
   .stat span{font-size:12px;color:var(--muted);font-weight:600}
@@ -111,6 +114,24 @@
   .tools{display:flex;gap:10px;flex-wrap:wrap}
   .tools button{flex:1;padding:12px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);color:var(--text);font-weight:600;cursor:pointer;font-size:13px}
   .view{display:none}.view.active{display:block}
+  nav button.tab{padding:10px 10px !important;font-size:13px !important}
+  .bigbtn{width:100%;padding:16px;border:0;border-radius:18px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;margin-bottom:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 22px rgba(99,102,241,.35);font-family:inherit}
+  .person{display:flex;align-items:center;gap:12px;padding:14px;border-radius:20px;background:var(--card);box-shadow:var(--shadow);margin-bottom:10px;cursor:pointer;transition:transform .12s}
+  .person:active{transform:scale(.98)}
+  .person .meta{flex:1;min-width:0}
+  .person .meta b{display:block;font-size:16px}
+  .person .meta small{color:var(--muted);font-size:12px}
+  .person .amt{text-align:right;font-size:14px;color:var(--muted)}
+  .avatar{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:19px;flex:none}
+  .ldel{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;padding:6px;border-radius:8px}
+  .ldel:hover{color:var(--out)}
+  .btn-danger{background:rgba(244,63,94,.12) !important;color:var(--out) !important}
+  .btn-soft{background:var(--bg);color:var(--text)}
+  .pbody{padding:22px}
+  .pbody .phead{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+  .pbody .phead h3{margin:0;font-size:21px}
+  .pbody .phead div.st{font-size:14px;margin-top:3px;font-weight:600;color:var(--muted)}
+  .phist{max-height:34vh;overflow:auto;margin:6px 0 14px}
 </style>
 </head>
 <body>
@@ -125,11 +146,12 @@
   <!-- OGGI -->
   <section id="view-oggi" class="view active">
     <div class="hero">
-      <div class="label">Saldo di oggi</div>
+      <div class="label">Saldo generale</div>
       <div class="big" id="dayBalance">€0,00</div>
+      <button class="editbtn" id="editStart">✎ Soldi di partenza: <span id="startLabel">€0,00</span></button>
       <div class="row">
-        <div class="pill"><span>⬇ Entrate</span><b id="dayIn">€0,00</b></div>
-        <div class="pill"><span>⬆ Spese</span><b id="dayOut">€0,00</b></div>
+        <div class="pill g"><span>⬇ Entrate di oggi</span><b id="dayIn">€0,00</b></div>
+        <div class="pill r"><span>⬆ Uscite di oggi</span><b id="dayOut">€0,00</b></div>
       </div>
     </div>
     <div class="stats">
@@ -186,14 +208,98 @@
       <p style="color:var(--muted);font-size:12px;margin:12px 0 0">I dati sono salvati solo su questo dispositivo (nel browser). Fai ogni tanto un backup.</p>
     </div>
   </section>
+
+  <!-- PRESTITI -->
+  <section id="view-prestiti" class="view">
+    <div class="hero">
+      <div class="label">Prestiti · saldo netto</div>
+      <div class="big" id="loanNet">€0,00</div>
+      <div class="row">
+        <div class="pill g"><span>⬇ Mi devono</span><b id="loanOwed">€0,00</b></div>
+        <div class="pill r"><span>⬆ Devo</span><b id="loanOwe">€0,00</b></div>
+      </div>
+    </div>
+    <button class="bigbtn" id="openLoan">＋ Nuovo prestito</button>
+    <div id="peopleList"></div>
+  </section>
 </div>
 
 <nav>
   <button class="tab active" data-view="oggi">Oggi</button>
   <button class="tab" data-view="mese">Mese</button>
   <button class="add" id="openAdd" aria-label="Aggiungi">+</button>
-  <button class="tab" data-view="lista">Movimenti</button>
+  <button class="tab" data-view="lista">Storico</button>
+  <button class="tab" data-view="prestiti">Prestiti</button>
 </nav>
+
+<dialog id="dlgLoan">
+  <form id="formLoan" method="dialog">
+    <h3>Nuovo prestito</h3>
+    <div class="field">
+      <label>Persona</label>
+      <input id="lName" type="text" list="peopleNames" maxlength="30" placeholder="Es. Mamma" required autocomplete="off">
+      <datalist id="peopleNames"></datalist>
+    </div>
+    <div class="field">
+      <label>Cosa è successo</label>
+      <select id="lType">
+        <option value="lent">🤝 Gli ho prestato (mi deve)</option>
+        <option value="borrowed">🙏 Mi ha prestato (devo)</option>
+        <option value="received">✅ Mi ha restituito</option>
+        <option value="repaid">↩️ Gli ho restituito</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Importo (€)</label>
+      <input class="amount" id="lAmount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0,00" required>
+    </div>
+    <div class="field">
+      <label>Nota (facoltativa)</label>
+      <input id="lNote" type="text" maxlength="60" placeholder="Es. Per la pizza">
+    </div>
+    <div class="field">
+      <label>Data</label>
+      <input id="lDate" type="date" required>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn-cancel" id="cancelLoan">Annulla</button>
+      <button type="submit" class="btn-save">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgPerson">
+  <div class="pbody">
+    <div class="phead">
+      <div class="avatar" id="pAvatar"></div>
+      <div><h3 id="pTitle"></h3><div class="st" id="pStatus"></div></div>
+    </div>
+    <div class="phist" id="pHist"></div>
+    <div class="actions" style="margin-bottom:10px">
+      <button type="button" class="btn-save" id="pAdd">＋ Aggiungi</button>
+      <button type="button" class="btn-soft" id="pSettle">Salda tutto</button>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn-danger" id="pDelete">Elimina persona</button>
+      <button type="button" class="btn-cancel" id="pClose">Chiudi</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgStart">
+  <form id="formStart" method="dialog">
+    <h3>Soldi di partenza</h3>
+    <div class="field">
+      <label>Quanto hai adesso (€)</label>
+      <input class="amount" id="startInput" type="number" inputmode="decimal" step="0.01" placeholder="0,00" required>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Da questa cifra l'app aggiunge i guadagni e toglie le spese per calcolare il saldo generale.</p>
+    <div class="actions">
+      <button type="button" class="btn-cancel" id="cancelStart">Annulla</button>
+      <button type="submit" class="btn-save">Salva</button>
+    </div>
+  </form>
+</dialog>
 
 <dialog id="dlg">
   <form id="form" method="dialog">
@@ -229,7 +335,7 @@
 (() => {
   const CATS = {
     out: [["🍽️","Cibo"],["🏠","Casa"],["🚗","Trasporti"],["🎉","Svago"],["🛍️","Shopping"],["💊","Salute"],["💡","Bollette"],["📦","Altro"]],
-    in:  [["💼","Stipendio"],["🎁","Regalo"],["🏷️","Vendita"],["📈","Investimenti"],["💰","Altro"]]
+    in:  [["💼","Paghetta"],["🎁","Regalo"],["🏷️","Vendita"],["📈","Investimenti"],["💰","Altro"]]
   };
   const COLORS = ["#6366f1","#f43f5e","#f59e0b","#10b981","#06b6d4","#8b5cf6","#ec4899","#84cc16"];
   const KEY = "spese_v1";
@@ -242,7 +348,13 @@
 
   let tx = [];
   try { tx = JSON.parse(localStorage.getItem(KEY)) || []; } catch(e){ tx = []; }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(tx)); } catch(e){} };
+  tx.forEach(t => { if (t.cat==="Stipendio") t.cat = "Paghetta"; });
+  let start = 0;
+  try { start = parseFloat(localStorage.getItem(KEY+"_start")) || 0; } catch(e){}
+  let loans = [];
+  try { loans = JSON.parse(localStorage.getItem(KEY+"_loans")) || []; } catch(e){ loans = []; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(tx)); localStorage.setItem(KEY+"_start", String(start)); localStorage.setItem(KEY+"_loans", JSON.stringify(loans)); } catch(e){} };
+  save();
 
   const now = new Date();
   let vy = now.getFullYear(), vm = now.getMonth();
@@ -270,7 +382,8 @@
     const i = sum(list,"in"), o = sum(list,"out");
     $("dayIn").textContent = fmt(i);
     $("dayOut").textContent = fmt(o);
-    $("dayBalance").textContent = fmt(i-o);
+    $("dayBalance").textContent = fmt(start + sum(tx,"in") - sum(tx,"out"));
+    $("startLabel").textContent = fmt(start);
     $("todayList").innerHTML = list.length ? list.slice().reverse().map(txRow).join("") : `<div class="empty">Nessun movimento oggi.<br>Premi + per aggiungerne uno.</div>`;
     const cm = inMonth(now.getFullYear(), now.getMonth());
     const mi = sum(cm,"in"), mo = sum(cm,"out");
@@ -349,7 +462,113 @@
     $("allList").innerHTML = html;
   }
 
-  function renderEverything(){ renderToday(); renderMonth(); renderAll(); }
+  function renderEverything(){ renderToday(); renderMonth(); renderAll(); renderLoans(); }
+
+  // ---------- Prestiti ----------
+  const LT = {
+    lent:["🤝","Gli ho prestato",1],
+    borrowed:["🙏","Mi ha prestato",-1],
+    received:["✅","Mi ha restituito",-1],
+    repaid:["↩️","Gli ho restituito",1]
+  };
+  const AV = ["#6366f1","#f43f5e","#f59e0b","#10b981","#06b6d4","#8b5cf6","#ec4899","#84cc16"];
+  const avColor = n => AV[[...n].reduce((a,c)=>a+c.charCodeAt(0),0) % AV.length];
+  const bal = p => Math.round(p.entries.reduce((a,e)=>a+e.amount*LT[e.type][2],0)*100)/100;
+  const status = b => b>0.004 ? `<span class="in">Ti deve ${fmt(b)}</span>` : b<-0.004 ? `<span class="out">Devi ${fmt(-b)}</span>` : `In pari`;
+  const initial = n => esc(n.trim().charAt(0).toUpperCase());
+  let currentPid = null, fromPerson = false;
+  const dlgP = $("dlgPerson"), dlgL = $("dlgLoan");
+
+  function renderPerson(){
+    const p = loans.find(x => x.id===currentPid);
+    if (!p){ if (dlgP.open) dlgP.close(); return; }
+    const b = bal(p);
+    $("pAvatar").style.background = avColor(p.name);
+    $("pAvatar").textContent = p.name.trim().charAt(0).toUpperCase();
+    $("pTitle").textContent = p.name;
+    $("pStatus").innerHTML = status(b);
+    const es = p.entries.slice().sort((a,c)=> c.date.localeCompare(a.date) || c.id-a.id);
+    $("pHist").innerHTML = es.length ? es.map(e=>{
+      const [ic,lb,s] = LT[e.type];
+      const [y,m,d] = e.date.split("-").map(Number);
+      const ds = new Date(y,m-1,d).toLocaleDateString("it-IT",{day:"numeric",month:"short",year:"numeric"});
+      return `<div class="tx"><div class="ico">${ic}</div>
+        <div class="meta"><b>${lb}</b><small>${ds}${e.note ? " · "+esc(e.note) : ""}</small></div>
+        <div class="amt ${s>0?"in":"out"}">${s>0?"+":"−"}${fmt(e.amount)}</div>
+        <button class="ldel" data-eid="${e.id}" title="Elimina">✕</button></div>`;
+    }).join("") : `<div class="empty">Nessun movimento.</div>`;
+    $("pSettle").style.display = Math.abs(b)>0.004 ? "" : "none";
+  }
+
+  function renderLoans(){
+    let owed = 0, owe = 0;
+    loans.forEach(p => { const b = bal(p); if (b>0) owed += b; else owe -= b; });
+    $("loanNet").textContent = fmt(owed-owe);
+    $("loanOwed").textContent = fmt(owed);
+    $("loanOwe").textContent = fmt(owe);
+    const list = loans.slice().sort((a,b)=> Math.abs(bal(b))-Math.abs(bal(a)));
+    $("peopleList").innerHTML = list.length ? list.map(p=>{
+      const n = p.entries.length;
+      return `<div class="person" data-pid="${p.id}">
+        <div class="avatar" style="background:${avColor(p.name)}">${initial(p.name)}</div>
+        <div class="meta"><b>${esc(p.name)}</b><small>${n} moviment${n===1?"o":"i"}</small></div>
+        <div class="amt">${status(bal(p))}</div></div>`;
+    }).join("") : `<div class="empty">Nessuna persona ancora.<br>Premi “Nuovo prestito” per iniziare.</div>`;
+    $("peopleNames").innerHTML = loans.map(p=>`<option value="${esc(p.name)}">`).join("");
+    if (dlgP.open) renderPerson();
+  }
+
+  function openLoanDlg(name){
+    $("formLoan").reset();
+    $("lName").value = name || "";
+    $("lDate").value = toISO(new Date());
+    dlgL.showModal();
+    setTimeout(()=> (name ? $("lAmount") : $("lName")).focus(), 50);
+  }
+
+  document.addEventListener("click", e => {
+    const card = e.target.closest(".person");
+    if (card){ currentPid = Number(card.dataset.pid); renderPerson(); dlgP.showModal(); return; }
+    const ld = e.target.closest(".ldel");
+    if (ld){
+      if (!confirm("Eliminare questa riga?")) return;
+      const p = loans.find(x => x.id===currentPid);
+      if (p){ p.entries = p.entries.filter(x => String(x.id)!==ld.dataset.eid); save(); renderLoans(); }
+    }
+  });
+  $("openLoan").onclick = () => { fromPerson = false; openLoanDlg(""); };
+  $("cancelLoan").onclick = () => { dlgL.close(); if (fromPerson && loans.find(x=>x.id===currentPid)) dlgP.showModal(); };
+  $("pAdd").onclick = () => {
+    const p = loans.find(x => x.id===currentPid); if (!p) return;
+    fromPerson = true; dlgP.close(); openLoanDlg(p.name);
+  };
+  $("pClose").onclick = () => dlgP.close();
+  $("pSettle").onclick = () => {
+    const p = loans.find(x => x.id===currentPid); if (!p) return;
+    const b = bal(p); if (Math.abs(b)<0.005) return;
+    if (!confirm(b>0 ? `Segno che ${p.name} ti ha restituito ${fmt(b)}?` : `Segno che hai restituito ${fmt(-b)} a ${p.name}?`)) return;
+    p.entries.push({id:Date.now(), type: b>0 ? "received" : "repaid", amount: Math.abs(b), note:"Saldato", date: toISO(new Date())});
+    save(); renderLoans();
+  };
+  $("pDelete").onclick = () => {
+    const p = loans.find(x => x.id===currentPid); if (!p) return;
+    if (confirm(`Eliminare ${p.name} e tutta la sua cartella?`)){
+      loans = loans.filter(x => x.id!==currentPid);
+      save(); dlgP.close(); renderLoans();
+    }
+  };
+  [dlgP, dlgL].forEach(d => d.addEventListener("click", e => { if (e.target===d) d.close(); }));
+  $("formLoan").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("lName").value.trim();
+    const amount = parseFloat(String($("lAmount").value).replace(",","."));
+    if (!name || !(amount>0)) return;
+    let p = loans.find(x => x.name.toLowerCase()===name.toLowerCase());
+    if (!p){ p = {id:Date.now(), name, entries:[]}; loans.push(p); }
+    p.entries.push({id:Date.now()+1, type:$("lType").value, amount:Math.round(amount*100)/100, note:$("lNote").value.trim(), date:$("lDate").value || toISO(new Date())});
+    save(); dlgL.close(); renderLoans();
+    if (fromPerson){ currentPid = p.id; renderPerson(); dlgP.showModal(); }
+  });
 
   // Tabs
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
@@ -408,6 +627,19 @@
     save(); dlg.close(); renderEverything();
   });
 
+  // Soldi di partenza
+  const dlgS = $("dlgStart");
+  $("editStart").onclick = () => { $("startInput").value = start || ""; dlgS.showModal(); setTimeout(()=>$("startInput").focus(),50); };
+  $("cancelStart").onclick = () => dlgS.close();
+  dlgS.addEventListener("click", e => { if (e.target===dlgS) dlgS.close(); });
+  $("formStart").addEventListener("submit", e => {
+    e.preventDefault();
+    const v = parseFloat(String($("startInput").value).replace(",","."));
+    if (isNaN(v)) return;
+    start = Math.round(v*100)/100;
+    save(); dlgS.close(); renderEverything();
+  });
+
   // Backup / CSV
   function download(name, content, mime){
     const a = document.createElement("a");
@@ -415,7 +647,7 @@
     a.download = name; a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   }
-  $("exportBtn").onclick = () => download(`spese-backup-${toISO(new Date())}.json`, JSON.stringify(tx,null,2), "application/json");
+  $("exportBtn").onclick = () => download(`spese-backup-${toISO(new Date())}.json`, JSON.stringify({start, tx, loans},null,2), "application/json");
   $("csvBtn").onclick = () => {
     const rows = [["Data","Tipo","Categoria","Descrizione","Importo"]].concat(
       tx.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date, t.type==="in"?"Entrata":"Spesa", t.cat, `"${(t.note||"").replace(/"/g,'""')}"`, String(t.amount).replace(".",",")])
@@ -429,9 +661,14 @@
     r.onload = () => {
       try {
         const data = JSON.parse(r.result);
-        if (!Array.isArray(data)) throw 0;
+        const list = Array.isArray(data) ? data : data.tx;
+        if (!Array.isArray(list)) throw 0;
         if (confirm("Sostituire i dati attuali con il backup?")){
-          tx = data.filter(t => t && t.date && t.amount>0 && (t.type==="in"||t.type==="out"));
+          if (!Array.isArray(data)){
+            start = parseFloat(data.start) || 0;
+            loans = Array.isArray(data.loans) ? data.loans.filter(p => p && p.name && Array.isArray(p.entries)) : [];
+          }
+          tx = list.filter(t => t && t.date && t.amount>0 && (t.type==="in"||t.type==="out"));
           save(); renderEverything();
         }
       } catch(_){ alert("File non valido."); }
@@ -444,3 +681,4 @@
 </script>
 </body>
 </html>
+
