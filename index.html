@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Le mie spese</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f5f9; --card:#ffffff; --text:#14161c; --muted:#6b7280; --line:#e6e8ef;
+    --accent:#6366f1; --accent2:#8b5cf6; --in:#10b981; --out:#f43f5e;
+    --shadow:0 8px 30px rgba(20,22,28,.07); --radius:22px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1115; --card:#181b22; --text:#f2f4f8; --muted:#9aa3b2; --line:#262a34;
+      --shadow:0 8px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    background:var(--bg); color:var(--text);
+    padding-bottom:110px; min-height:100vh;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:20px 16px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  header h1{font-size:22px;margin:0;font-weight:800;letter-spacing:-.02em}
+  header small{display:block;color:var(--muted);font-weight:500;font-size:13px;margin-top:2px;text-transform:capitalize}
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:16px}
+  .hero{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;border-radius:var(--radius);padding:22px;margin-bottom:16px;
+    box-shadow:0 14px 34px rgba(99,102,241,.35);
+  }
+  .hero .label{opacity:.85;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+  .hero .big{font-size:38px;font-weight:800;letter-spacing:-.03em;margin:6px 0 14px}
+  .row{display:flex;gap:12px}
+  .pill{flex:1;background:rgba(255,255,255,.17);border-radius:16px;padding:12px 14px}
+  .pill span{display:block;font-size:12px;opacity:.85;font-weight:600}
+  .pill b{font-size:18px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+  .stat{background:var(--card);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+  .stat span{font-size:12px;color:var(--muted);font-weight:600}
+  .stat b{display:block;font-size:16px;margin-top:4px;letter-spacing:-.02em}
+  .in{color:var(--in)} .out{color:var(--out)}
+  h2{font-size:16px;margin:0 0 12px;font-weight:700}
+  .tx{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .tx:last-child{border-bottom:0}
+  .ico{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-size:20px;flex:none;background:var(--bg)}
+  .tx .meta{flex:1;min-width:0}
+  .tx .meta b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tx .meta small{color:var(--muted);font-size:12px}
+  .tx .amt{font-weight:700;font-size:15px;white-space:nowrap}
+  .del{background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer;padding:6px;border-radius:8px}
+  .del:hover{color:var(--out)}
+  .empty{text-align:center;color:var(--muted);padding:26px 0;font-size:14px}
+  .daylabel{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 2px 6px}
+  .monthnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .monthnav button{width:42px;height:42px;border-radius:14px;border:0;background:var(--card);color:var(--text);font-size:18px;box-shadow:var(--shadow);cursor:pointer}
+  .monthnav strong{font-size:18px;text-transform:capitalize}
+  .chartbox{position:relative;height:260px}
+  .legend{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .legend div{display:flex;align-items:center;gap:10px;font-size:14px}
+  .legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
+  .legend em{margin-left:auto;font-style:normal;font-weight:700}
+  .legend .bar{flex:1;height:6px;border-radius:6px;background:var(--bg);overflow:hidden;margin:0 6px}
+  .legend .bar u{display:block;height:100%;border-radius:6px}
+
+  /* nav */
+  nav{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));
+    display:flex;align-items:center;gap:6px;background:var(--card);padding:8px;border-radius:28px;
+    box-shadow:0 12px 40px rgba(0,0,0,.2);z-index:10;
+  }
+  nav button.tab{border:0;background:none;color:var(--muted);padding:11px 16px;border-radius:20px;font-weight:700;font-size:14px;cursor:pointer}
+  nav button.tab.active{background:var(--bg);color:var(--text)}
+  nav button.add{
+    width:54px;height:54px;border-radius:50%;border:0;color:#fff;font-size:30px;line-height:1;cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 20px rgba(99,102,241,.5);margin:0 4px;
+  }
+
+  /* modal */
+  dialog{
+    border:0;border-radius:26px;padding:0;width:min(440px,94vw);background:var(--card);color:var(--text);
+    box-shadow:0 30px 80px rgba(0,0,0,.4);
+  }
+  dialog::backdrop{background:rgba(5,6,10,.55);backdrop-filter:blur(4px)}
+  form{padding:22px}
+  form h3{margin:0 0 16px;font-size:19px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);padding:4px;border-radius:16px;margin-bottom:16px}
+  .seg label{text-align:center;padding:11px;border-radius:12px;font-weight:700;cursor:pointer;color:var(--muted);font-size:14px}
+  .seg input{display:none}
+  .seg input:checked + span{display:block}
+  .seg label.on-out{background:var(--out);color:#fff}
+  .seg label.on-in{background:var(--in);color:#fff}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+  .field input,.field select{
+    width:100%;padding:14px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);
+    color:var(--text);font-size:16px;font-family:inherit;outline:none;
+  }
+  .field input:focus,.field select:focus{border-color:var(--accent)}
+  .amount{font-size:30px !important;font-weight:800;text-align:center}
+  .actions{display:flex;gap:10px;margin-top:6px}
+  .actions button{flex:1;padding:15px;border-radius:16px;border:0;font-size:16px;font-weight:700;cursor:pointer}
+  .btn-cancel{background:var(--bg);color:var(--text)}
+  .btn-save{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+  .tools{display:flex;gap:10px;flex-wrap:wrap}
+  .tools button{flex:1;padding:12px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);color:var(--text);font-weight:600;cursor:pointer;font-size:13px}
+  .view{display:none}.view.active{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>💸 Le mie spese</h1>
+      <small id="todayLabel"></small>
+    </div>
+  </header>
+
+  <!-- OGGI -->
+  <section id="view-oggi" class="view active">
+    <div class="hero">
+      <div class="label">Saldo di oggi</div>
+      <div class="big" id="dayBalance">€0,00</div>
+      <div class="row">
+        <div class="pill"><span>⬇ Entrate</span><b id="dayIn">€0,00</b></div>
+        <div class="pill"><span>⬆ Spese</span><b id="dayOut">€0,00</b></div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span>Mese: entrate</span><b class="in" id="mIn1">€0</b></div>
+      <div class="stat"><span>Mese: spese</span><b class="out" id="mOut1">€0</b></div>
+      <div class="stat"><span>Mese: saldo</span><b id="mBal1">€0</b></div>
+    </div>
+    <div class="card">
+      <h2>Movimenti di oggi</h2>
+      <div id="todayList"></div>
+    </div>
+  </section>
+
+  <!-- MESE -->
+  <section id="view-mese" class="view">
+    <div class="monthnav">
+      <button id="prevM" aria-label="Mese precedente">‹</button>
+      <strong id="monthTitle"></strong>
+      <button id="nextM" aria-label="Mese successivo">›</button>
+    </div>
+    <div class="hero">
+      <div class="label">Saldo del mese</div>
+      <div class="big" id="monthBalance">€0,00</div>
+      <div class="row">
+        <div class="pill"><span>⬇ Entrate</span><b id="monthIn">€0,00</b></div>
+        <div class="pill"><span>⬆ Spese</span><b id="monthOut">€0,00</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Entrate e uscite per giorno</h2>
+      <div class="chartbox"><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Spese per categoria</h2>
+      <div class="chartbox" style="height:220px"><canvas id="pieChart"></canvas></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <!-- MOVIMENTI -->
+  <section id="view-lista" class="view">
+    <div class="card">
+      <h2>Tutti i movimenti</h2>
+      <div id="allList"></div>
+    </div>
+    <div class="card">
+      <h2>Dati</h2>
+      <div class="tools">
+        <button id="exportBtn">⬇ Esporta backup</button>
+        <button id="importBtn">⬆ Importa backup</button>
+        <button id="csvBtn">📄 Esporta CSV</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" hidden>
+      <p style="color:var(--muted);font-size:12px;margin:12px 0 0">I dati sono salvati solo su questo dispositivo (nel browser). Fai ogni tanto un backup.</p>
+    </div>
+  </section>
+</div>
+
+<nav>
+  <button class="tab active" data-view="oggi">Oggi</button>
+  <button class="tab" data-view="mese">Mese</button>
+  <button class="add" id="openAdd" aria-label="Aggiungi">+</button>
+  <button class="tab" data-view="lista">Movimenti</button>
+</nav>
+
+<dialog id="dlg">
+  <form id="form" method="dialog">
+    <h3>Nuovo movimento</h3>
+    <div class="seg" id="seg">
+      <label class="on-out" id="lblOut"><input type="radio" name="type" value="out" checked>Spesa</label>
+      <label id="lblIn"><input type="radio" name="type" value="in">Guadagno</label>
+    </div>
+    <div class="field">
+      <label>Importo (€)</label>
+      <input class="amount" id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0,00" required>
+    </div>
+    <div class="field">
+      <label>Categoria</label>
+      <select id="cat"></select>
+    </div>
+    <div class="field">
+      <label>Descrizione (facoltativa)</label>
+      <input id="note" type="text" maxlength="60" placeholder="Es. Pizza con gli amici">
+    </div>
+    <div class="field">
+      <label>Data</label>
+      <input id="date" type="date" required>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn-cancel" id="cancel">Annulla</button>
+      <button type="submit" class="btn-save">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const CATS = {
+    out: [["🍽️","Cibo"],["🏠","Casa"],["🚗","Trasporti"],["🎉","Svago"],["🛍️","Shopping"],["💊","Salute"],["💡","Bollette"],["📦","Altro"]],
+    in:  [["💼","Stipendio"],["🎁","Regalo"],["🏷️","Vendita"],["📈","Investimenti"],["💰","Altro"]]
+  };
+  const COLORS = ["#6366f1","#f43f5e","#f59e0b","#10b981","#06b6d4","#8b5cf6","#ec4899","#84cc16"];
+  const KEY = "spese_v1";
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,"0");
+  const fmt = n => new Intl.NumberFormat("it-IT",{style:"currency",currency:"EUR"}).format(n);
+  const fmtShort = n => new Intl.NumberFormat("it-IT",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
+  const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  let tx = [];
+  try { tx = JSON.parse(localStorage.getItem(KEY)) || []; } catch(e){ tx = []; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(tx)); } catch(e){} };
+
+  const now = new Date();
+  let vy = now.getFullYear(), vm = now.getMonth();
+  let barChart, pieChart;
+
+  const icon = (type,cat) => (CATS[type].find(c => c[1]===cat) || ["•"])[0];
+  const sum = (arr,type) => arr.filter(t => t.type===type).reduce((a,t) => a+t.amount, 0);
+  const inMonth = (y,m) => tx.filter(t => t.date.startsWith(`${y}-${pad(m+1)}-`));
+
+  $("todayLabel").textContent = now.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+  function txRow(t){
+    const sign = t.type==="in" ? "+" : "−";
+    return `<div class="tx">
+      <div class="ico">${icon(t.type,t.cat)}</div>
+      <div class="meta"><b>${esc(t.note || t.cat)}</b><small>${esc(t.cat)}</small></div>
+      <div class="amt ${t.type}">${sign}${fmt(t.amount)}</div>
+      <button class="del" data-id="${t.id}" title="Elimina">✕</button>
+    </div>`;
+  }
+
+  function renderToday(){
+    const today = toISO(new Date());
+    const list = tx.filter(t => t.date===today);
+    const i = sum(list,"in"), o = sum(list,"out");
+    $("dayIn").textContent = fmt(i);
+    $("dayOut").textContent = fmt(o);
+    $("dayBalance").textContent = fmt(i-o);
+    $("todayList").innerHTML = list.length ? list.slice().reverse().map(txRow).join("") : `<div class="empty">Nessun movimento oggi.<br>Premi + per aggiungerne uno.</div>`;
+    const cm = inMonth(now.getFullYear(), now.getMonth());
+    const mi = sum(cm,"in"), mo = sum(cm,"out");
+    $("mIn1").textContent = fmtShort(mi);
+    $("mOut1").textContent = fmtShort(mo);
+    $("mBal1").textContent = fmtShort(mi-mo);
+    $("mBal1").className = (mi-mo)>=0 ? "in" : "out";
+  }
+
+  function renderMonth(){
+    const d = new Date(vy,vm,1);
+    $("monthTitle").textContent = d.toLocaleDateString("it-IT",{month:"long",year:"numeric"});
+    const list = inMonth(vy,vm);
+    const i = sum(list,"in"), o = sum(list,"out");
+    $("monthIn").textContent = fmt(i);
+    $("monthOut").textContent = fmt(o);
+    $("monthBalance").textContent = fmt(i-o);
+
+    const days = new Date(vy,vm+1,0).getDate();
+    const ins = Array(days).fill(0), outs = Array(days).fill(0);
+    list.forEach(t => { const dd = parseInt(t.date.slice(8,10),10)-1; (t.type==="in"?ins:outs)[dd] += t.amount; });
+
+    const css = getComputedStyle(document.documentElement);
+    const txt = css.getPropertyValue("--muted").trim();
+    const grid = css.getPropertyValue("--line").trim();
+    Chart.defaults.color = txt;
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+    if (barChart) barChart.destroy();
+    barChart = new Chart($("barChart"),{
+      type:"bar",
+      data:{labels:Array.from({length:days},(_,k)=>k+1),
+        datasets:[
+          {label:"Entrate",data:ins,backgroundColor:"#10b981",borderRadius:6},
+          {label:"Spese",data:outs,backgroundColor:"#f43f5e",borderRadius:6}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:8}},
+          tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`,title:c=>`Giorno ${c[0].label}`}}},
+        scales:{x:{grid:{display:false},ticks:{maxTicksLimit:10}},y:{beginAtZero:true,grid:{color:grid},ticks:{callback:v=>fmtShort(v)}}}}
+    });
+
+    const byCat = {};
+    list.filter(t=>t.type==="out").forEach(t => byCat[t.cat] = (byCat[t.cat]||0)+t.amount);
+    const entries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+    if (pieChart) pieChart.destroy();
+    if (entries.length){
+      pieChart = new Chart($("pieChart"),{
+        type:"doughnut",
+        data:{labels:entries.map(e=>e[0]),datasets:[{data:entries.map(e=>e[1]),backgroundColor:entries.map((_,k)=>COLORS[k%COLORS.length]),borderWidth:0}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:"68%",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.parsed)}`}}}}
+      });
+      $("legend").innerHTML = entries.map((e,k)=>{
+        const pct = o ? (e[1]/o*100) : 0;
+        return `<div><i style="background:${COLORS[k%COLORS.length]}"></i>${icon("out",e[0])} ${esc(e[0])}
+          <span class="bar"><u style="width:${pct}%;background:${COLORS[k%COLORS.length]}"></u></span>
+          <em>${fmt(e[1])}</em></div>`;
+      }).join("");
+    } else {
+      $("legend").innerHTML = `<div class="empty" style="width:100%">Nessuna spesa in questo mese.</div>`;
+    }
+  }
+
+  function renderAll(){
+    const sorted = tx.slice().sort((a,b)=> b.date.localeCompare(a.date) || b.id-a.id);
+    if (!sorted.length){ $("allList").innerHTML = `<div class="empty">Ancora nessun movimento.</div>`; return; }
+    let html = "", last = "";
+    sorted.forEach(t=>{
+      if (t.date!==last){
+        last = t.date;
+        const [y,m,d] = t.date.split("-").map(Number);
+        html += `<div class="daylabel">${new Date(y,m-1,d).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>`;
+      }
+      html += txRow(t);
+    });
+    $("allList").innerHTML = html;
+  }
+
+  function renderEverything(){ renderToday(); renderMonth(); renderAll(); }
+
+  // Tabs
+  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x===b));
+    document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id==="view-"+b.dataset.view));
+    if (b.dataset.view==="mese") renderMonth();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }));
+  $("prevM").onclick = () => { vm--; if(vm<0){vm=11;vy--;} renderMonth(); };
+  $("nextM").onclick = () => { vm++; if(vm>11){vm=0;vy++;} renderMonth(); };
+
+  // Delete
+  document.addEventListener("click", e => {
+    const b = e.target.closest(".del");
+    if (!b) return;
+    if (confirm("Eliminare questo movimento?")){
+      tx = tx.filter(t => String(t.id)!==b.dataset.id);
+      save(); renderEverything();
+    }
+  });
+
+  // Modal
+  const dlg = $("dlg");
+  function fillCats(type){
+    $("cat").innerHTML = CATS[type].map(c=>`<option value="${c[1]}">${c[0]} ${c[1]}</option>`).join("");
+  }
+  function setType(type){
+    document.querySelector(`input[name=type][value=${type}]`).checked = true;
+    $("lblOut").className = type==="out" ? "on-out" : "";
+    $("lblIn").className = type==="in" ? "on-in" : "";
+    fillCats(type);
+  }
+  document.querySelectorAll("input[name=type]").forEach(r => r.addEventListener("change", () => setType(r.value)));
+  $("openAdd").onclick = () => {
+    $("form").reset();
+    setType("out");
+    $("date").value = toISO(new Date());
+    dlg.showModal();
+    setTimeout(()=>$("amount").focus(),50);
+  };
+  $("cancel").onclick = () => dlg.close();
+  dlg.addEventListener("click", e => { if (e.target===dlg) dlg.close(); });
+
+  $("form").addEventListener("submit", e => {
+    e.preventDefault();
+    const amount = parseFloat(String($("amount").value).replace(",","."));
+    if (!(amount>0)) return;
+    const type = document.querySelector("input[name=type]:checked").value;
+    tx.push({
+      id: Date.now(),
+      type, amount: Math.round(amount*100)/100,
+      cat: $("cat").value,
+      note: $("note").value.trim(),
+      date: $("date").value || toISO(new Date())
+    });
+    save(); dlg.close(); renderEverything();
+  });
+
+  // Backup / CSV
+  function download(name, content, mime){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([content],{type:mime}));
+    a.download = name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  }
+  $("exportBtn").onclick = () => download(`spese-backup-${toISO(new Date())}.json`, JSON.stringify(tx,null,2), "application/json");
+  $("csvBtn").onclick = () => {
+    const rows = [["Data","Tipo","Categoria","Descrizione","Importo"]].concat(
+      tx.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date, t.type==="in"?"Entrata":"Spesa", t.cat, `"${(t.note||"").replace(/"/g,'""')}"`, String(t.amount).replace(".",",")])
+    );
+    download(`spese-${toISO(new Date())}.csv`, rows.map(r=>r.join(";")).join("\n"), "text/csv");
+  };
+  $("importBtn").onclick = () => $("importFile").click();
+  $("importFile").addEventListener("change", e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = JSON.parse(r.result);
+        if (!Array.isArray(data)) throw 0;
+        if (confirm("Sostituire i dati attuali con il backup?")){
+          tx = data.filter(t => t && t.date && t.amount>0 && (t.type==="in"||t.type==="out"));
+          save(); renderEverything();
+        }
+      } catch(_){ alert("File non valido."); }
+    };
+    r.readAsText(f); e.target.value = "";
+  });
+
+  renderEverything();
+})();
+</script>
+</body>
+</html>
